@@ -7,8 +7,13 @@ import gradio as gr
 import plotly.graph_objects as go
 import os
 
-from pipeline.extractor import GPT4VExtractor, DOCUMENT_SCHEMAS, encode_pil_image
-from pipeline.validator import DocumentValidator, HumanReviewQueue
+try:
+    from pipeline.extractor import GPT4VExtractor, DOCUMENT_SCHEMAS, encode_pil_image
+    from pipeline.validator import DocumentValidator, HumanReviewQueue
+    PIPELINE_AVAILABLE = True
+except Exception as e:
+    GPT4VExtractor = None
+    PIPELINE_AVAILABLE = False
 
 OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
 
@@ -91,6 +96,8 @@ def render_demo(d):
     </div>"""
 
 def run_extraction(image, doc_type, api_key):
+    if not PIPELINE_AVAILABLE:
+        return "<div class='card'><p class='card-body'>Pipeline modules not available in this environment.</p></div>", None
     if not api_key:
         return "<div class='card'><p class='card-body'>Enter your OpenAI API key above to run live extraction.</p></div>", None
     if image is None:
@@ -178,8 +185,10 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extra
                 btn_bad = gr.Button("Blurry scan — 19% confidence", size="sm")
             demo_html = gr.HTML()
             demo_chart = gr.Plot()
-            btn_good.click(lambda: (render_demo(INVOICE_DEMO), build_conf_chart(INVOICE_DEMO["confidence"])), outputs=[demo_html, demo_chart])
-            btn_bad.click(lambda: (render_demo(LOW_CONF_DEMO), build_conf_chart(LOW_CONF_DEMO["confidence"])), outputs=[demo_html, demo_chart])
+            def show_good(): return render_demo(INVOICE_DEMO), build_conf_chart(INVOICE_DEMO["confidence"])
+            def show_bad(): return render_demo(LOW_CONF_DEMO), build_conf_chart(LOW_CONF_DEMO["confidence"])
+            btn_good.click(show_good, outputs=[demo_html, demo_chart])
+            btn_bad.click(show_bad, outputs=[demo_html, demo_chart])
 
         with gr.Tab("Live Extraction"):
             gr.HTML('<div class="section" style="padding-bottom:12px"><div class="sec-label">Requires OpenAI API key</div></div>')
