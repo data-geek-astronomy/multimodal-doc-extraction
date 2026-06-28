@@ -129,6 +129,12 @@ def run_extraction(image, doc_type, api_key):
         return f"<div class='card'><p class='card-body' style='color:#ff453a'>Error: {e}</p></div>", None
 
 
+def _show_good():
+    return render_demo(INVOICE_DEMO), build_conf_chart(INVOICE_DEMO["confidence"])
+
+def _show_bad():
+    return render_demo(LOW_CONF_DEMO), build_conf_chart(LOW_CONF_DEMO["confidence"])
+
 with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extraction") as demo:
 
     gr.HTML("""
@@ -185,10 +191,8 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extra
                 btn_bad = gr.Button("Blurry scan — 19% confidence", size="sm")
             demo_html = gr.HTML()
             demo_chart = gr.Plot()
-            def show_good(): return render_demo(INVOICE_DEMO), build_conf_chart(INVOICE_DEMO["confidence"])
-            def show_bad(): return render_demo(LOW_CONF_DEMO), build_conf_chart(LOW_CONF_DEMO["confidence"])
-            btn_good.click(show_good, outputs=[demo_html, demo_chart])
-            btn_bad.click(show_bad, outputs=[demo_html, demo_chart])
+            btn_good.click(fn=_show_good, outputs=[demo_html, demo_chart])
+            btn_bad.click(fn=_show_bad, outputs=[demo_html, demo_chart])
 
         with gr.Tab("Live Extraction"):
             gr.HTML('<div class="section" style="padding-bottom:12px"><div class="sec-label">Requires OpenAI API key</div></div>')
