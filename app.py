@@ -121,12 +121,13 @@ def build_conf_html(conf_dict):
     return f'<div class="card" style="margin-top:10px"><div class="sec-label" style="margin-bottom:14px">Per-field confidence</div>{rows}</div>'
 
 def run_extraction(image, doc_type, api_key):
+    def _wrap(html): return gr.update(value=html)
     if not PIPELINE_AVAILABLE:
-        return "<div class='card'><p class='card-body'>Pipeline modules not available in this environment.</p></div>"
+        return _wrap("<div class='card'><p class='card-body'>Pipeline modules not available in this environment.</p></div>")
     if not api_key:
-        return "<div class='card'><p class='card-body'>Enter your OpenAI API key above to run live extraction.</p></div>"
+        return _wrap("<div class='card'><p class='card-body'>Enter your OpenAI API key above to run live extraction.</p></div>")
     if image is None:
-        return "<div class='card'><p class='card-body'>Upload a document image first.</p></div>"
+        return _wrap("<div class='card'><p class='card-body'>Upload a document image first.</p></div>")
     try:
         extractor = GPT4VExtractor(api_key=api_key)
         result = extractor.extract_from_image(image, doc_type)
@@ -151,16 +152,16 @@ def run_extraction(image, doc_type, api_key):
             f'{badge}</div>{rows}</div>'
             + build_conf_html(result.confidence_scores)
         )
-        return html
+        return _wrap(html)
     except Exception as e:
-        return f"<div class='card'><p class='card-body' style='color:#ff453a'>Error: {e}</p></div>"
+        return _wrap(f"<div class='card'><p class='card-body' style='color:#ff453a'>Error: {e}</p></div>")
 
 
 def _show_good():
-    return render_demo(INVOICE_DEMO)
+    return gr.update(value=render_demo(INVOICE_DEMO))
 
 def _show_bad():
-    return render_demo(LOW_CONF_DEMO)
+    return gr.update(value=render_demo(LOW_CONF_DEMO))
 
 with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extraction") as demo:
 
@@ -216,7 +217,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extra
             with gr.Row():
                 btn_good = gr.Button("Clean invoice — 94% confidence", size="sm")
                 btn_bad = gr.Button("Blurry scan — 19% confidence", size="sm")
-            demo_html = gr.HTML()
+            demo_html = gr.HTML(value="")
             btn_good.click(fn=_show_good, outputs=[demo_html])
             btn_bad.click(fn=_show_bad, outputs=[demo_html])
 
@@ -227,7 +228,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extra
                 img_upload = gr.Image(label="Document Image", type="pil")
                 doc_type = gr.Dropdown(choices=["invoice", "id_document", "medical_record", "business_card", "form"], value="invoice", label="Document Type")
             extract_btn = gr.Button("Extract & Validate", variant="primary")
-            live_html = gr.HTML()
+            live_html = gr.HTML(value="")
             extract_btn.click(fn=run_extraction, inputs=[img_upload, doc_type, api_key], outputs=[live_html])
 
         with gr.Tab("How It Works"):
