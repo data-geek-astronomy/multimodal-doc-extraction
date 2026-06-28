@@ -108,13 +108,25 @@ def render_demo(d):
         {chart_rows}
     </div>"""
 
+def build_conf_html(conf_dict):
+    """Inline HTML confidence bars — avoids gr.Plot schema bug in this Gradio version."""
+    rows = "".join([
+        f'<div style="display:flex;align-items:center;gap:10px;margin:5px 0">'
+        f'<div style="width:110px;font-size:12px;color:#86868b;text-align:right">{k.replace("_"," ").title()}</div>'
+        f'<div style="flex:1;background:#1c1c1e;border-radius:3px;height:18px;position:relative">'
+        f'<div style="width:{conf_dict[k]*100}%;background:{conf_color(conf_dict[k])};height:100%;border-radius:3px"></div>'
+        f'</div><div style="width:36px;font-size:12px;color:#f5f5f7;font-weight:600">{conf_dict[k]*100:.0f}%</div></div>'
+        for k in conf_dict
+    ])
+    return f'<div class="card" style="margin-top:10px"><div class="sec-label" style="margin-bottom:14px">Per-field confidence</div>{rows}</div>'
+
 def run_extraction(image, doc_type, api_key):
     if not PIPELINE_AVAILABLE:
-        return "<div class='card'><p class='card-body'>Pipeline modules not available in this environment.</p></div>", None
+        return "<div class='card'><p class='card-body'>Pipeline modules not available in this environment.</p></div>"
     if not api_key:
-        return "<div class='card'><p class='card-body'>Enter your OpenAI API key above to run live extraction.</p></div>", None
+        return "<div class='card'><p class='card-body'>Enter your OpenAI API key above to run live extraction.</p></div>"
     if image is None:
-        return "<div class='card'><p class='card-body'>Upload a document image first.</p></div>", None
+        return "<div class='card'><p class='card-body'>Upload a document image first.</p></div>"
     try:
         extractor = GPT4VExtractor(api_key=api_key)
         result = extractor.extract_from_image(image, doc_type)
@@ -131,15 +143,17 @@ def run_extraction(image, doc_type, api_key):
             f'<div class="field-value">{v}</div></div>'
             for k, v in result.extracted_data.items()
         ])
-        html = f"""<div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-                <div><div class="card-title">Live Extraction — {doc_type.title()}</div>
-                <div style="font-size:28px;font-weight:700;color:{oc}">{result.overall_confidence*100:.0f}% confident</div></div>
-                {badge}
-            </div>{rows}</div>"""
-        return html, build_conf_chart(result.confidence_scores)
+        html = (
+            f'<div class="card">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+            f'<div><div class="card-title">Live Extraction - {doc_type.title()}</div>'
+            f'<div style="font-size:28px;font-weight:700;color:{oc}">{result.overall_confidence*100:.0f}% confident</div></div>'
+            f'{badge}</div>{rows}</div>'
+            + build_conf_html(result.confidence_scores)
+        )
+        return html
     except Exception as e:
-        return f"<div class='card'><p class='card-body' style='color:#ff453a'>Error: {e}</p></div>", None
+        return f"<div class='card'><p class='card-body' style='color:#ff453a'>Error: {e}</p></div>"
 
 
 def _show_good():
@@ -214,8 +228,7 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extra
                 doc_type = gr.Dropdown(choices=["invoice", "id_document", "medical_record", "business_card", "form"], value="invoice", label="Document Type")
             extract_btn = gr.Button("Extract & Validate", variant="primary")
             live_html = gr.HTML()
-            live_chart = gr.Plot()
-            extract_btn.click(fn=run_extraction, inputs=[img_upload, doc_type, api_key], outputs=[live_html, live_chart])
+            extract_btn.click(fn=run_extraction, inputs=[img_upload, doc_type, api_key], outputs=[live_html])
 
         with gr.Tab("How It Works"):
             gr.Markdown("""
