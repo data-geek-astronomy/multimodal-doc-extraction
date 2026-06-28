@@ -85,6 +85,15 @@ def render_demo(d):
         for k, v in d["fields"].items()
     ])
     oc = conf_color(d["overall"])
+    # Inline confidence chart as HTML bars (avoids gr.Plot schema bug in this Gradio version)
+    chart_rows = "".join([
+        f'<div style="display:flex;align-items:center;gap:10px;margin:5px 0">'
+        f'<div style="width:110px;font-size:12px;color:#86868b;text-align:right">{k.replace("_"," ").title()}</div>'
+        f'<div style="flex:1;background:#1c1c1e;border-radius:3px;height:18px;position:relative">'
+        f'<div style="width:{d["confidence"][k]*100}%;background:{conf_color(d["confidence"][k])};height:100%;border-radius:3px"></div>'
+        f'</div><div style="width:36px;font-size:12px;color:#f5f5f7;font-weight:600">{d["confidence"][k]*100:.0f}%</div></div>'
+        for k in d["confidence"]
+    ])
     return f"""
     <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
@@ -93,6 +102,10 @@ def render_demo(d):
             {badge}
         </div>{rows}
         <div style="margin-top:12px;font-size:12px;color:#6e6e73">Threshold: 70% — below this, document goes to human review</div>
+    </div>
+    <div class="card" style="margin-top:10px">
+        <div class="sec-label" style="margin-bottom:14px">Per-field confidence</div>
+        {chart_rows}
     </div>"""
 
 def run_extraction(image, doc_type, api_key):
@@ -130,10 +143,10 @@ def run_extraction(image, doc_type, api_key):
 
 
 def _show_good():
-    return render_demo(INVOICE_DEMO), build_conf_chart(INVOICE_DEMO["confidence"])
+    return render_demo(INVOICE_DEMO)
 
 def _show_bad():
-    return render_demo(LOW_CONF_DEMO), build_conf_chart(LOW_CONF_DEMO["confidence"])
+    return render_demo(LOW_CONF_DEMO)
 
 with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extraction") as demo:
 
@@ -190,9 +203,8 @@ with gr.Blocks(css=CSS, theme=gr.themes.Base(), title="Multimodal Document Extra
                 btn_good = gr.Button("Clean invoice — 94% confidence", size="sm")
                 btn_bad = gr.Button("Blurry scan — 19% confidence", size="sm")
             demo_html = gr.HTML()
-            demo_chart = gr.Plot()
-            btn_good.click(fn=_show_good, outputs=[demo_html, demo_chart])
-            btn_bad.click(fn=_show_bad, outputs=[demo_html, demo_chart])
+            btn_good.click(fn=_show_good, outputs=[demo_html])
+            btn_bad.click(fn=_show_bad, outputs=[demo_html])
 
         with gr.Tab("Live Extraction"):
             gr.HTML('<div class="section" style="padding-bottom:12px"><div class="sec-label">Requires OpenAI API key</div></div>')
